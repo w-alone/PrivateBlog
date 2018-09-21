@@ -1,0 +1,79 @@
+var JDBC = require('jdbc');
+var jinst = require('jdbc/lib/jinst');
+const express = require('express');
+
+
+if (!jinst.isJvmCreated()) {
+  jinst.addOption("-Xrs");
+  jinst.setupClasspath(['d:\\test\\nodejs-sql-server\\node_modules\\java\\mysql-connector-java-8.0.12.jar', 'mysql-connector-java-8.0.12.jar']);
+}
+
+var config = {
+  // Required
+  url: 'jdbc:mysql://localhost/ddbb?useSSL=false&serverTimezone=UTC',
+
+  // Optional
+  drivername: 'com.mysql.cj.jdbc.Driver',
+  minpoolsize: 50,
+  maxpoolsize: 100,
+
+  // Note that if you sepecify the user and password as below, they get
+  // converted to properties and submitted to getConnection that way.  That
+  // means that if your driver doesn't support the 'user' and 'password'
+  // properties this will not work.  You will have to supply the appropriate
+  // values in the properties object instead.
+  user: 'root',
+  password: 'admin',
+  properties: {}
+};
+
+const app = express();
+
+var mysqlhd = new JDBC(config);
+mysqlhd.initialize(function (err) {
+  if (err) {
+    console.log(err);
+  }
+});
+
+app.use('/', function (err, res, next) {
+  var connobj = null;
+  var conn = null
+  mysqlhd.reserve(function (err, res) {
+    if (err) {
+      console.log(err)
+    }
+    connobj = res;
+    conn = connobj.conn;
+    conn.createStatement(function (err, statement) {
+      if (err) {
+        console.log(err);
+      } else {
+        statement.executeQuery("SELECT count(*) FROM posts;", function (err, resultset) {
+          if (err) {
+            console.log(err)
+          } else {
+            // Convert the result set to an object array.
+            resultset.toObjArray(function (err, results) {
+              if (results.length > 0) {
+                console.log(results)
+              }
+            });
+          }
+        });
+      }
+    });
+    next();
+  });
+})
+
+app.get('/', function (req, res,next) {
+  console.log('a new session finished')
+  // a = new Date().getTime().toString();
+  // event.emit('some_event');
+  res.send("OVER");        
+})
+
+app.listen(4000, () => {
+  console.log('Go to http://localhost:4000/posts to see posts');
+});
